@@ -1,0 +1,15 @@
+# Manifest of HACS-tracked community integrations and frontend plugins.
+# Source of truth for what `scripts/hacs-sync.sh` will install.
+#
+# Each entry:
+#   - repository: <github owner/repo>
+#     category: integration | plugin | theme | appdaemon | netdaemon | python_script
+#     version: <git tag or commit sha>     # pin upstream version explicitly
+#
+# Example:
+# entries:
+#   - repository: thomasloven/lovelace-card-mod
+#     category: plugin
+#     version: 3.4.4
+
+entries: []

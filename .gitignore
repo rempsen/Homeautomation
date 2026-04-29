@@ -1,0 +1,30 @@
+# Secrets — must never be committed.
+secrets.yaml
+.storage/
+*.token
+.HA_TOKEN
+.env
+
+# HACS-managed downloads (versions are tracked in hacs.yaml; sources live on the Green).
+custom_components/
+www/community/
+
+# Home Assistant runtime artefacts (these only exist on the Green).
+home-assistant.log
+home-assistant.log.*
+home-assistant_v2.db
+home-assistant_v2.db-*
+*.db
+*.db-shm
+*.db-wal
+.cloud/
+.uuid
+deps/
+tts/
+image/
+
+# Editor / OS noise.
+.DS_Store
+.idea/
+.vscode/
+*.swp

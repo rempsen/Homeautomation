@@ -1,0 +1,14 @@
+# Home Assistant top-level config.
+# Synced to /config on the HA Green by the Git Pull add-on.
+
+default_config:
+
+homeassistant:
+  packages: !include_dir_named packages
+
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+
+logger:
+  default: info
