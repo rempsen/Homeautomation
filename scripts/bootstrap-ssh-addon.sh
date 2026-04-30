@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Install, configure, and start the Advanced SSH & Web Terminal add-on
-# (slug: a0d7b954_ssh) on a Home Assistant Green via the Supervisor REST API.
+# (slug: a0d7b954_ssh) on a Home Assistant Green via the Supervisor API.
 #
 # Inputs (env):
 #   HA_HOST, HA_TOKEN  see ha-api.sh
@@ -34,35 +34,75 @@ echo "Using public key: ${pubkey_file}"
 
 ha_ping
 
-addon_state() {
-  ha_api GET "/api/hassio/addons/${ADDON_SLUG}/info" \
-    | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("data",{}).get("state","not_installed"))'
+addon_version() {
+  ha_supervisor get "/addons/${ADDON_SLUG}/info" \
+    | python3 -c 'import json, sys; print(json.loads(sys.stdin.read() or "{}").get("version") or "")'
 }
 
-state="$(addon_state || echo not_installed)"
-if [[ "${state}" == "not_installed" ]]; then
-  echo "Installing add-on ${ADDON_SLUG}..."
-  ha_api POST "/api/hassio/addons/${ADDON_SLUG}/install" >/dev/null
+ver="$(addon_version)"
+if [[ -z "$ver" ]]; then
+  echo "Installing add-on ${ADDON_SLUG} (this can take 30-90s)..."
+  ha_supervisor post "/store/addons/${ADDON_SLUG}/install" '{}' >/dev/null
+  for _ in $(seq 1 60); do
+    sleep 3
+    ver="$(addon_version)"
+    [[ -n "$ver" ]] && break
+  done
+  if [[ -z "$ver" ]]; then
+    echo "Add-on did not finish installing within timeout." >&2
+    exit 1
+  fi
 fi
+echo "Add-on installed (version ${ver})."
 
-echo "Writing add-on options (authorized_keys + port 22222)..."
-options_json=$(python3 - "${pubkey}" <<'PY'
+# Build options. The Advanced SSH add-on schema nests ssh-related fields
+# under the "ssh" key. ssh.username MUST be set to a valid Unix username
+# (typically "root"); if left blank Supervisor may auto-fill from the SSH
+# key comment, which is invalid and crashes the SSH daemon at start.
+echo "Writing add-on options (ssh.username=root, authorized_keys, port 22222)..."
+options_json="$(python3 - "${pubkey}" <<'PY'
 import json, sys
 pubkey = sys.argv[1].strip()
 print(json.dumps({
     "options": {
-        "authorized_keys": [pubkey],
-        "password": "",
-        "apks": [],
-        "share_sessions": False
+        "ssh": {
+            "username": "root",
+            "password": "",
+            "authorized_keys": [pubkey],
+            "sftp": False,
+            "compatibility_mode": False,
+            "allow_agent_forwarding": False,
+            "allow_remote_port_forwarding": False,
+            "allow_tcp_forwarding": False,
+        },
+        "zsh": True,
+        "share_sessions": False,
+        "packages": [],
+        "init_commands": [],
     },
-    "network": {"22222/tcp": 22222},
+    # Map the container port 22 to host port 22222.
+    "network": {"22/tcp": 22222},
 }))
 PY
-)
-ha_api POST "/api/hassio/addons/${ADDON_SLUG}/options" "${options_json}" >/dev/null
+)"
+ha_supervisor post "/addons/${ADDON_SLUG}/options" "$options_json" >/dev/null
 
-echo "Starting add-on..."
-ha_api POST "/api/hassio/addons/${ADDON_SLUG}/start" >/dev/null || true
+echo "Restarting add-on so the new options take effect..."
+ha_supervisor post "/addons/${ADDON_SLUG}/restart" '{}' >/dev/null
 
-echo "Done. Test with:  ssh root@${HA_HOST%%:*} -p 22222"
+# Poll until the SSH daemon inside the add-on is actually accepting
+# connections. Without this, an immediate `ssh` from the next line of a
+# user's script fails with "Connection refused" because the addon container
+# is still coming back up.
+ssh_host="${HA_HOST%%:*}"
+echo "Waiting for SSH on ${ssh_host}:22222..."
+for i in $(seq 1 30); do
+  if (exec 3<>"/dev/tcp/${ssh_host}/22222") 2>/dev/null; then
+    exec 3<&-
+    echo "SSH up after ${i}s."
+    break
+  fi
+  sleep 1
+done
+
+echo "Done. Test with:  ssh root@${ssh_host} -p 22222"

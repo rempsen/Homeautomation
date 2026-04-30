@@ -6,8 +6,8 @@
 #   HA_HOST, HA_TOKEN  see ha-api.sh
 #   ZHA_DEVICE_PATH    optional: full /dev/serial/by-id/... path. If unset,
 #                      the script auto-discovers a Nabu Casa / Home Assistant
-#                      Connect adapter (ZBT-1, ZBT-2, SkyConnect) from
-#                      /api/hassio/hardware/info.
+#                      Connect adapter (ZBT-1, ZBT-2, SkyConnect) from the
+#                      Supervisor's hardware info via the WebSocket API.
 #   ZHA_RADIO_TYPE     optional override: ezsp | znp | deconz | zigate | xbee
 #                      Default: auto-pick based on the matched adapter.
 #   ZHA_BAUDRATE       default 115200
@@ -23,16 +23,35 @@ ZHA_FLOW_CONTROL="${ZHA_FLOW_CONTROL:-software}"
 
 ha_ping
 
+# --- 0. Skip if ZHA already has a loaded config entry --------------------------
+entries_json="$(ha_api GET /api/config/config_entries/entry)"
+existing_zha="$(python3 - "$entries_json" <<'PY'
+import json, sys
+for e in json.loads(sys.argv[1]):
+    if e.get("domain") == "zha":
+        print(f'{e.get("entry_id","")}|{e.get("state","")}|{e.get("title","")}')
+        break
+PY
+)"
+if [[ -n "${existing_zha}" ]]; then
+  IFS='|' read -r entry_id state title <<<"${existing_zha}"
+  echo "ZHA config entry already exists (entry_id=${entry_id}, state=${state}, title=${title})."
+  echo "Nothing to do. To reconfigure, delete the entry in the HA UI first."
+  exit 0
+fi
+
 # --- 1. Resolve device path + radio type --------------------------------------
 device_path="${ZHA_DEVICE_PATH:-}"
 radio_type="${ZHA_RADIO_TYPE:-}"
 
 if [[ -z "${device_path}" || -z "${radio_type}" ]]; then
   echo "Auto-discovering Zigbee adapter via Supervisor hardware info..."
-  hw_json="$(ha_api GET /api/hassio/hardware/info)"
+  # /api/hassio/hardware/info via the HTTP proxy returns 401 to long-lived
+  # tokens in HA 2024.x+, so we go through the WebSocket Supervisor API.
+  hw_json="$(ha_supervisor get /hardware/info)"
   read -r auto_path auto_radio <<<"$(python3 - "$hw_json" <<'PY'
 import json, sys
-data = json.loads(sys.argv[1]).get("data", {})
+data = json.loads(sys.argv[1] or "{}")
 devices = data.get("devices", [])
 priority = [
     # (substring to match in by-id, radio_type)
