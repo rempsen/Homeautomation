@@ -1,0 +1,49 @@
+# Template sensors that summarize "what's playing across the house"
+# for the Home dashboard's conditional Now-Playing card.
+#
+# Why template sensors and not inline templates in the card?
+# - Inline templates re-evaluate on every state change of every entity
+#   referenced; template sensors are cached and only re-evaluate when
+#   the watched entities change. Lighter on the recorder and on the
+#   browser when the page is open.
+# - Reusable: any view or automation can read these sensors.
+
+template:
+  - sensor:
+      - name: "Now Playing Count"
+        unique_id: now_playing_count
+        # Number of media_players currently in 'playing' state, excluding
+        # TVs and unavailable devices.
+        state: >-
+          {{ states.media_player
+             | selectattr('state','eq','playing')
+             | rejectattr('attributes.friendly_name','search','TV', ignorecase=True)
+             | list | count }}
+        icon: mdi:music
+
+      - name: "Now Playing First Room"
+        unique_id: now_playing_first_room
+        state: >-
+          {% set p = states.media_player
+              | selectattr('state','eq','playing')
+              | rejectattr('attributes.friendly_name','search','TV', ignorecase=True)
+              | list %}
+          {% if p %}{{ p[0].attributes.friendly_name }}{% else %}—{% endif %}
+
+      - name: "Now Playing First Title"
+        unique_id: now_playing_first_title
+        state: >-
+          {% set p = states.media_player
+              | selectattr('state','eq','playing')
+              | rejectattr('attributes.friendly_name','search','TV', ignorecase=True)
+              | list %}
+          {% if p %}{{ p[0].attributes.media_title | default('Playing') }}{% else %}Nothing playing{% endif %}
+
+      - name: "Now Playing First Artist"
+        unique_id: now_playing_first_artist
+        state: >-
+          {% set p = states.media_player
+              | selectattr('state','eq','playing')
+              | rejectattr('attributes.friendly_name','search','TV', ignorecase=True)
+              | list %}
+          {% if p %}{{ p[0].attributes.media_artist | default('') }}{% else %}{% endif %}

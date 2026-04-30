@@ -1,0 +1,69 @@
+# Presence-based automations: arriving home, leaving home.
+# Tracks `person.dan_rosenblat`'s zone changes against `zone.home`.
+#
+# Conservative defaults: actions are gated on time-of-day and only
+# touch a small set of entities so a flaky GPS update doesn't trigger
+# a house-wide light show. Tune the conditions / actions as you go.
+
+automation:
+  # ─── Arriving home ────────────────────────────────────────────────────
+  - id: presence_arrive_home
+    alias: Presence · Arriving home
+    description: >
+      When Dan enters the home zone after sunset and the house is dark,
+      gently bring up the lights to 60%. No-op during the day.
+    triggers:
+      - trigger: state
+        entity_id: person.dan_rosenblat
+        from: not_home
+        to: home
+    conditions:
+      # Only after sunset (or before sunrise — i.e. when it's actually dark)
+      - condition: state
+        entity_id: sun.sun
+        state: below_horizon
+    actions:
+      - alias: Bring lights up to 60%
+        action: light.turn_on
+        target:
+          entity_id: all
+        data:
+          brightness_pct: 60
+          transition: 4
+        continue_on_error: true
+
+      - alias: Pulse a notification to the iPhone HA app
+        action: notify.mobile_app_iphone_dr_16
+        data:
+          title: Welcome home
+          message: >-
+            Lights set to 60% · Outside is {{ states('weather.forecast_home') | replace('_',' ') }} · {{ state_attr('weather.forecast_home','temperature') }}°
+        continue_on_error: true
+    mode: single
+
+  # ─── Leaving home ─────────────────────────────────────────────────────
+  - id: presence_leave_home
+    alias: Presence · Leaving home
+    description: >
+      When Dan leaves the home zone and stays away for at least 5
+      minutes (avoids GPS jitter), run the All Off scene to make sure
+      nothing's left running.
+    triggers:
+      - trigger: state
+        entity_id: person.dan_rosenblat
+        from: home
+        to: not_home
+        for:
+          minutes: 5
+    actions:
+      - alias: Run the All Off scene
+        action: script.scene_all_off
+        continue_on_error: true
+
+      - alias: Send a confirmation notification
+        action: notify.mobile_app_iphone_dr_16
+        data:
+          title: Home secured
+          message: All lights and media stopped — see you when you're back.
+        continue_on_error: true
+    mode: single
