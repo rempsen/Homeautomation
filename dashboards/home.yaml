@@ -9,6 +9,10 @@
 
 title: Home
 
+# Apply our custom dark/glass theme to every view in this dashboard.
+# Drop the `theme:` line if you want HA's default theme back.
+theme: iOS Glass
+
 views:
   # ────────────────────────────────────────────────────────────────────
   #  HOME — the landing screen
@@ -27,27 +31,48 @@ views:
           - type: custom:mushroom-template-card
             primary: |-
               {% set h = now().hour %}
-              {% if h < 5 %}Late evening
-              {% elif h < 12 %}Good morning
-              {% elif h < 18 %}Good afternoon
-              {% else %}Good evening
+              {% set name = state_attr('person.dan_rosenblat','friendly_name') | default('') | replace('Rosenblat','') | trim %}
+              {% if h < 5 %}Late evening{% if name %}, {{ name }}{% endif %}
+              {% elif h < 12 %}Good morning{% if name %}, {{ name }}{% endif %}
+              {% elif h < 18 %}Good afternoon{% if name %}, {{ name }}{% endif %}
+              {% else %}Good evening{% if name %}, {{ name }}{% endif %}
               {% endif %}
             secondary: |-
-              {{ states('weather.forecast_home') | default('Home') | replace('_',' ') | title }}
-              · {{ state_attr('weather.forecast_home','temperature') | default('—') }}°
-            icon: mdi:weather-partly-cloudy
+              {% set w = states('weather.forecast_home') %}
+              {% set t = state_attr('weather.forecast_home','temperature') %}
+              {% set home = is_state('person.dan_rosenblat','home') %}
+              {{ w | default('Home') | replace('_',' ') | title }}{% if t %} · {{ t }}°{% endif %}{% if home %} · You're home{% else %} · Away{% endif %}
+            icon: |-
+              {% set w = states('weather.forecast_home') %}
+              {% if 'sunny' in w or 'clear' in w %}mdi:weather-sunny
+              {% elif 'partlycloudy' in w %}mdi:weather-partly-cloudy
+              {% elif 'cloudy' in w %}mdi:weather-cloudy
+              {% elif 'rain' in w or 'pour' in w %}mdi:weather-pouring
+              {% elif 'snow' in w %}mdi:weather-snowy
+              {% elif 'fog' in w %}mdi:weather-fog
+              {% elif 'lightning' in w %}mdi:weather-lightning
+              {% else %}mdi:weather-partly-cloudy
+              {% endif %}
+            icon_color: |-
+              {% set h = now().hour %}
+              {% if h < 7 or h >= 20 %}indigo
+              {% elif h < 12 %}amber
+              {% elif h < 17 %}orange
+              {% else %}deep-orange
+              {% endif %}
             multiline_secondary: false
             tap_action:
               action: none
             card_mod:
               style: |
                 ha-card {
-                  background: linear-gradient(135deg, rgba(96,128,255,0.18), rgba(166,89,255,0.12));
-                  border: none;
-                  padding: 18px 14px;
+                  background: linear-gradient(135deg, rgba(96,128,255,0.20), rgba(166,89,255,0.14));
+                  border: 1px solid rgba(255,255,255,0.06);
+                  border-radius: 22px;
+                  padding: 20px 16px;
                 }
-                ha-card .primary { font-size: 24px !important; font-weight: 600 !important; }
-                ha-card .secondary { opacity: 0.75 !important; }
+                ha-card .primary { font-size: 26px !important; font-weight: 700 !important; letter-spacing: -0.2px; }
+                ha-card .secondary { opacity: 0.78 !important; font-size: 13px !important; }
 
       # The 5 category tiles
       - type: grid

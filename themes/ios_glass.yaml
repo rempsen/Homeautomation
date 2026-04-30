@@ -1,0 +1,58 @@
+# Custom dark theme for the Home dashboard. Tries to capture an
+# iOS / Apple-music vibe: deep ink background, soft surfaces with
+# translucent gradients, generous corner radii.
+#
+# Activated by clicking the user avatar (top-right) in HA, choosing
+# Profile → Theme → "iOS Glass". You can also pin it as the default
+# in configuration.yaml -> homeassistant: theme.
+
+iOS Glass:
+  # ─── Surface ─────────────────────────────────────────────────────────
+  primary-background-color: "#0B0F19"
+  secondary-background-color: "#101524"
+  card-background-color: "rgba(255,255,255,0.04)"
+  ha-card-background: "rgba(255,255,255,0.04)"
+  ha-card-border-radius: "22px"
+  ha-card-border-width: "1px"
+  ha-card-border-color: "rgba(255,255,255,0.06)"
+  ha-card-box-shadow: "0 4px 16px rgba(0,0,0,0.25)"
+
+  # ─── Type ────────────────────────────────────────────────────────────
+  primary-text-color: "#F2F4FA"
+  secondary-text-color: "rgba(242,244,250,0.65)"
+  text-primary-color: "#F2F4FA"
+  disabled-text-color: "rgba(242,244,250,0.35)"
+
+  # ─── Accents ─────────────────────────────────────────────────────────
+  primary-color: "#6080FF"
+  accent-color: "#A659FF"
+  light-primary-color: "#8FA8FF"
+  dark-primary-color: "#3D5BCB"
+
+  # ─── State colors (Mushroom respects these) ──────────────────────────
+  state-icon-color: "rgba(242,244,250,0.85)"
+  state-icon-active-color: "#FFD166"
+  state-icon-unavailable-color: "rgba(242,244,250,0.30)"
+
+  # ─── Sidebar / app frame ─────────────────────────────────────────────
+  app-header-background-color: "transparent"
+  app-header-text-color: "#F2F4FA"
+  sidebar-background-color: "#0B0F19"
+  sidebar-text-color: "#F2F4FA"
+  sidebar-icon-color: "rgba(242,244,250,0.55)"
+  sidebar-selected-background-color: "rgba(96,128,255,0.14)"
+  sidebar-selected-icon-color: "#6080FF"
+  sidebar-selected-text-color: "#F2F4FA"
+
+  # ─── Mushroom-specific tokens ────────────────────────────────────────
+  mush-title-padding: "16px 16px 4px"
+  mush-spacing: "12px"
+
+  # ─── Dividers / outlines ─────────────────────────────────────────────
+  divider-color: "rgba(255,255,255,0.05)"
+  outline-color: "rgba(255,255,255,0.08)"
+
+  # ─── Rgb fallbacks (some cards expect raw rgb triples) ───────────────
+  rgb-primary-color: "96, 128, 255"
+  rgb-accent-color: "166, 89, 255"
+  rgb-state-icon-active-color: "255, 209, 102"
