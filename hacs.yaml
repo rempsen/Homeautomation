@@ -4,12 +4,35 @@
 # Each entry:
 #   - repository: <github owner/repo>
 #     category: integration | plugin | theme | appdaemon | netdaemon | python_script
-#     version: <git tag or commit sha>     # pin upstream version explicitly
-#
-# Example:
-# entries:
-#   - repository: thomasloven/lovelace-card-mod
-#     category: plugin
-#     version: 3.4.4
+#     version: <git tag or commit sha>     # pin upstream version explicitly (omit for latest)
 
-entries: []
+entries:
+  # --- Frontend plugins (Lovelace cards / styling) ---
+  # Modern card library; the foundation of the UI redesign.
+  - repository: piitaya/lovelace-mushroom
+    category: plugin
+
+  # CSS-restyle hook for any card. Many other plugins assume it's installed.
+  - repository: thomasloven/lovelace-card-mod
+    category: plugin
+
+  # Polished media-player card; we use it for Sonos.
+  - repository: kalkih/mini-media-player
+    category: plugin
+
+  # Remote-control card that talks to webOS / Apple TV / etc. via media_player.
+  - repository: usernein/tv-card
+    category: plugin
+
+  # Frontend for the Scheduler integration below.
+  - repository: nielsfaber/scheduler-card
+    category: plugin
+
+  # --- Python integrations (custom_components) ---
+  # Visual schedule editor; pairs with scheduler-card.
+  - repository: nielsfaber/scheduler-component
+    category: integration
+
+  # Circadian color-temperature + brightness for lights.
+  - repository: basnijholt/adaptive-lighting
+    category: integration
