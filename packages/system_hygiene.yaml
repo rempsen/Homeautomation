@@ -1,0 +1,54 @@
+# System hygiene: recorder filter + nightly automatic backup.
+# Loaded by `homeassistant.packages: !include_dir_named packages`
+# in configuration.yaml.
+
+# ─── Recorder filter ──────────────────────────────────────────────────
+# HA's SQLite recorder is what powers history, the energy dashboard,
+# and most graphs. It silently grows fast on a busy network — Sonos
+# `media_player.*` updates many times per second while music is
+# playing, network sensors poll constantly, and update.* entities
+# carry release-notes payloads we never query.
+#
+# Filter approach:
+#   - 14-day rolling window (default is 10; we bump it slightly)
+#   - exclude domains that are noisy and rarely useful in history
+#   - exclude per-entity globs for known offenders
+recorder:
+  purge_keep_days: 14
+  exclude:
+    domains:
+      - update          # update.* entities flap on every poll
+      - sun             # sun.sun changes by the second
+      - weather         # forecast attributes update constantly
+      - tts             # text-to-speech ephemera
+      - stt             # speech-to-text ephemera
+    entity_globs:
+      - sensor.*_battery_state    # iOS HA app polls battery state aggressively
+      - sensor.*_uptime
+      - sensor.*_signal_strength
+      - sensor.*_storage
+      - sensor.*_memory_*
+      - sensor.*_cpu_*
+    entities:
+      - sensor.iphone_dr_16_battery_state
+      - sensor.iphone_dr_16_storage
+
+# ─── Nightly automatic backup ─────────────────────────────────────────
+# Calls the modern `backup.create_automatic` service every night at
+# 3:07 AM (off-peak). The service uses whatever backup destinations
+# you've configured in Settings → System → Backups (defaults to a
+# local backup; if you connect Nabu Casa Cloud or Google Drive in the
+# UI, the same automation will also send the backup there).
+#
+# Naming, retention, and storage targets are all controlled by the
+# HA backup UI — this YAML only ensures one runs every night.
+automation:
+  - id: nightly_automatic_backup
+    alias: System · Nightly automatic backup
+    description: Runs the configured automatic backup every night at 3:07 AM.
+    triggers:
+      - trigger: time
+        at: "03:07:00"
+    actions:
+      - action: backup.create_automatic
+    mode: single
