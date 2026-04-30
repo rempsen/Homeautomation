@@ -1,0 +1,79 @@
+# Applish — a soft, modern theme inspired by iOS / the reference mockup.
+# Generous radii, light pastel surfaces, restrained color, system fonts.
+#
+# Activate per-user from Profile → Themes, or per-dashboard via the
+# `theme:` key (already set in dashboards/home.yaml).
+
+Applish:
+  # ---- typography --------------------------------------------------------
+  primary-font-family: >-
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+    "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif
+  paper-font-common-base_-_font-family: var(--primary-font-family)
+  paper-font-body1_-_font-family: var(--primary-font-family)
+  paper-font-subhead_-_font-family: var(--primary-font-family)
+  paper-font-headline_-_font-family: var(--primary-font-family)
+  paper-font-title_-_font-family: var(--primary-font-family)
+
+  # ---- surfaces ----------------------------------------------------------
+  primary-background-color: "#F4F2FA"     # page bg — the lavender wash from the mock
+  secondary-background-color: "#FFFFFF"
+  card-background-color: "#FFFFFF"
+  ha-card-background: "#FFFFFF"
+  ha-card-border-radius: "22px"
+  ha-card-border-width: "0"
+  ha-card-box-shadow: "0 6px 18px rgba(20, 17, 38, 0.06)"
+  divider-color: "rgba(20, 17, 38, 0.06)"
+
+  # ---- text --------------------------------------------------------------
+  primary-text-color: "#141226"
+  secondary-text-color: "#7A7790"
+  text-primary-color: "#FFFFFF"
+  disabled-text-color: "#B7B5C7"
+
+  # ---- accents -----------------------------------------------------------
+  primary-color: "#7C5CFF"                # iOS-ish purple, matches the hero card
+  accent-color: "#C8FF5A"                 # the lime pill on the bottom nav
+  state-icon-color: "#141226"
+  state-icon-active-color: "#7C5CFF"
+  paper-item-icon-active-color: "#7C5CFF"
+
+  # ---- semantic colors used by mushroom + tile ---------------------------
+  success-color: "#34C759"
+  warning-color: "#FF9F0A"
+  error-color: "#FF3B30"
+  info-color: "#0A84FF"
+
+  # ---- sidebar / app-header ---------------------------------------------
+  app-header-background-color: "var(--primary-background-color)"
+  app-header-text-color: "var(--primary-text-color)"
+  sidebar-background-color: "#FFFFFF"
+  sidebar-selected-background-color: "rgba(124, 92, 255, 0.10)"
+  sidebar-selected-text-color: "#7C5CFF"
+  sidebar-selected-icon-color: "#7C5CFF"
+
+  # ---- mushroom variables ------------------------------------------------
+  mush-rgb-purple: "124, 92, 255"
+  mush-rgb-green: "52, 199, 89"
+  mush-rgb-red: "255, 59, 48"
+  mush-rgb-orange: "255, 159, 10"
+  mush-rgb-blue: "10, 132, 255"
+  mush-icon-border-radius: "16px"
+  mush-control-border-radius: "14px"
+  mush-card-primary-font-size: "16px"
+  mush-card-primary-font-weight: "600"
+  mush-card-secondary-font-size: "13px"
+
+  # ---- dark variant (auto when user picks "Applish" + system dark) -------
+  modes:
+    dark:
+      primary-background-color: "#0E0C18"
+      secondary-background-color: "#15121F"
+      card-background-color: "#1A1726"
+      ha-card-background: "#1A1726"
+      ha-card-box-shadow: "0 6px 18px rgba(0, 0, 0, 0.45)"
+      divider-color: "rgba(255, 255, 255, 0.08)"
+      primary-text-color: "#F4F2FA"
+      secondary-text-color: "#9D9AB0"
+      sidebar-background-color: "#15121F"
+      sidebar-selected-background-color: "rgba(124, 92, 255, 0.18)"
