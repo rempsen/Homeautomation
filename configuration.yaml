@@ -12,3 +12,15 @@ scene: !include scenes.yaml
 
 logger:
   default: info
+
+# Phone-first YAML-mode dashboard. The default storage-mode dashboard
+# is left untouched, so anything we change here is recoverable just by
+# switching dashboards in the sidebar.
+lovelace:
+  dashboards:
+    lovelace-home:
+      mode: yaml
+      title: Home
+      icon: mdi:home-variant
+      show_in_sidebar: true
+      filename: dashboards/home.yaml

@@ -1,0 +1,477 @@
+# Phone-first "Home" dashboard for the rempsen Home Assistant Green.
+# Registered as a YAML-mode dashboard via configuration.yaml.
+#
+# Layout:
+#   - 1 Home view  (5 category tiles + status header + quick-action chips)
+#   - 5 Sub-views  (Lights, Sound, Music, Entertainment, Security)
+#
+# Visual: dark, glass, iOS-y. Mushroom + card-mod do the heavy lifting.
+
+title: Home
+
+views:
+  # ────────────────────────────────────────────────────────────────────
+  #  HOME — the landing screen
+  # ────────────────────────────────────────────────────────────────────
+  - path: home
+    title: Home
+    icon: mdi:home
+    type: sections
+    max_columns: 1
+    dense_section_placement: true
+    sections:
+      # Hero greeting / status
+      - type: grid
+        column_span: 1
+        cards:
+          - type: custom:mushroom-template-card
+            primary: |-
+              {% set h = now().hour %}
+              {% if h < 5 %}Late evening
+              {% elif h < 12 %}Good morning
+              {% elif h < 18 %}Good afternoon
+              {% else %}Good evening
+              {% endif %}
+            secondary: |-
+              {{ states('weather.forecast_home') | default('Home') | replace('_',' ') | title }}
+              · {{ state_attr('weather.forecast_home','temperature') | default('—') }}°
+            icon: mdi:weather-partly-cloudy
+            multiline_secondary: false
+            tap_action:
+              action: none
+            card_mod:
+              style: |
+                ha-card {
+                  background: linear-gradient(135deg, rgba(96,128,255,0.18), rgba(166,89,255,0.12));
+                  border: none;
+                  padding: 18px 14px;
+                }
+                ha-card .primary { font-size: 24px !important; font-weight: 600 !important; }
+                ha-card .secondary { opacity: 0.75 !important; }
+
+      # The 5 category tiles
+      - type: grid
+        column_span: 1
+        cards:
+          - type: custom:mushroom-template-card
+            primary: Lights
+            secondary: |-
+              {% set on = states.light | selectattr('state','eq','on') | list | count %}
+              {{ on }} on
+            icon: mdi:lightbulb-on-outline
+            icon_color: amber
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-home/lights
+            card_mod: &tile_card_mod
+              style: |
+                ha-card {
+                  background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+                  border: 1px solid rgba(255,255,255,0.08);
+                  border-radius: 22px;
+                  padding: 14px 12px;
+                  min-height: 96px;
+                }
+                ha-card .primary { font-size: 17px !important; font-weight: 600 !important; }
+
+          - type: custom:mushroom-template-card
+            primary: Sound
+            secondary: TVs · Surround
+            icon: mdi:surround-sound
+            icon_color: indigo
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-home/sound
+            card_mod: *tile_card_mod
+
+          - type: custom:mushroom-template-card
+            primary: Music
+            secondary: |-
+              {% set playing = states.media_player
+                  | selectattr('attributes.device_class','undefined')
+                  | rejectattr('attributes.friendly_name','search','TV')
+                  | selectattr('state','eq','playing') | list | count %}
+              {% if playing > 0 %}{{ playing }} room{{ 's' if playing > 1 else '' }} playing
+              {% else %}Tap to play
+              {% endif %}
+            icon: mdi:music
+            icon_color: pink
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-home/music
+            card_mod: *tile_card_mod
+
+          - type: custom:mushroom-template-card
+            primary: Entertainment
+            secondary: TVs · Streaming
+            icon: mdi:television
+            icon_color: cyan
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-home/entertainment
+            card_mod: *tile_card_mod
+
+          - type: custom:mushroom-template-card
+            primary: Security
+            secondary: |-
+              {% set unav = states.camera | selectattr('state','eq','unavailable') | list | count %}
+              {% if unav > 0 %}{{ unav }} cameras offline
+              {% else %}{{ states.camera | list | count }} cameras
+              {% endif %}
+            icon: mdi:shield-home-outline
+            icon_color: red
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-home/security
+            card_mod: *tile_card_mod
+
+      # Quick-action chips at the bottom
+      - type: grid
+        column_span: 1
+        cards:
+          - type: custom:mushroom-chips-card
+            alignment: center
+            chips:
+              - type: template
+                content: Goodnight
+                icon: mdi:weather-night
+                icon_color: indigo
+                tap_action:
+                  action: call-service
+                  service: script.scene_goodnight
+              - type: template
+                content: All Off
+                icon: mdi:power
+                icon_color: red
+                tap_action:
+                  action: call-service
+                  service: script.scene_all_off
+              - type: template
+                content: Movie
+                icon: mdi:movie-open-outline
+                icon_color: deep-purple
+                tap_action:
+                  action: call-service
+                  service: script.scene_movie
+
+  # ────────────────────────────────────────────────────────────────────
+  #  LIGHTS
+  # ────────────────────────────────────────────────────────────────────
+  - path: lights
+    title: Lights
+    icon: mdi:lightbulb
+    type: sections
+    max_columns: 1
+    sections:
+      - type: grid
+        cards:
+          - type: custom:mushroom-title-card
+            title: Lights
+            subtitle: Tap a light to toggle, hold to dim
+
+          - type: custom:mushroom-light-card
+            entity: light.basement_bedroom_main_lights
+            name: Basement Bedroom
+            show_brightness_control: true
+            show_color_temp_control: false
+            show_color_control: false
+            use_light_color: true
+
+          - type: custom:mushroom-title-card
+            subtitle: Adaptive lighting (auto color-temperature through the day)
+
+          - type: entities
+            entities:
+              - entity: switch.default_adaptive_lighting_default
+                name: Default profile — enabled
+              - entity: switch.adaptive_lighting_default_adaptive_lighting_adapt_brightness_default
+                name: ↳ Adapt brightness
+              - entity: switch.adaptive_lighting_default_adaptive_lighting_adapt_color_default
+                name: ↳ Adapt color temperature
+              - entity: switch.adaptive_lighting_default_adaptive_lighting_sleep_mode_default
+                name: ↳ Sleep mode (warm dim)
+
+          - type: markdown
+            content: >
+              **Heads-up:** Only one Lutron light is currently exposed to HA.
+              If you have more Caseta dimmers/switches that should appear
+              here, open Settings → Devices & Services → Lutron Caseta →
+              **Configure** to bring them in. Zigbee bulbs and switches you
+              pair via ZHA will show here automatically.
+
+  # ────────────────────────────────────────────────────────────────────
+  #  SOUND  (per-TV / per-room audio characteristics)
+  # ────────────────────────────────────────────────────────────────────
+  - path: sound
+    title: Sound
+    icon: mdi:surround-sound
+    type: sections
+    max_columns: 1
+    sections:
+      - type: grid
+        cards:
+          - type: custom:mushroom-title-card
+            title: Sound
+            subtitle: Sonos audio modes — per TV and per room
+
+          # Per-TV section
+          - type: custom:mushroom-title-card
+            subtitle: Family Room TV (Sonos)
+          - type: entities
+            entities:
+              - entity: switch.family_room_tv_surround_enabled
+                name: Surround
+              - entity: switch.family_room_tv_night_sound
+                name: Night sound
+              - entity: switch.family_room_tv_speech_enhancement
+                name: Speech enhancement
+              - entity: switch.family_room_tv_loudness
+                name: Loudness
+              - entity: switch.family_room_tv_crossfade
+                name: Crossfade
+              - entity: switch.family_room_tv_surround_music_full_volume
+                name: Full music volume in surround
+
+          - type: custom:mushroom-title-card
+            subtitle: Master Bedroom TV (Sonos)
+          - type: entities
+            entities:
+              - entity: switch.master_bedrm_tv_surround_enabled
+                name: Surround
+              - entity: switch.master_bedrm_tv_night_sound
+                name: Night sound
+              - entity: switch.master_bedrm_tv_speech_enhancement
+                name: Speech enhancement
+              - entity: switch.master_bedrm_tv_loudness
+                name: Loudness
+
+          - type: custom:mushroom-title-card
+            subtitle: Rec Room TV (Sonos)
+          - type: entities
+            entities:
+              - entity: switch.rec_room_tv_surround_enabled
+                name: Surround
+              - entity: switch.rec_room_tv_subwoofer_enabled
+                name: Subwoofer
+              - entity: switch.rec_room_tv_night_sound
+                name: Night sound
+              - entity: switch.rec_room_tv_speech_enhancement
+                name: Speech enhancement
+              - entity: switch.rec_room_tv_loudness
+                name: Loudness
+
+          # Per-room music speakers section
+          - type: custom:mushroom-title-card
+            subtitle: Music speakers — loudness & crossfade
+          - type: entities
+            entities:
+              - entity: switch.kitchen_loudness
+                name: Kitchen — loudness
+              - entity: switch.kitchen_crossfade
+                name: Kitchen — crossfade
+              - entity: switch.living_room_loudness
+                name: Living Room — loudness
+              - entity: switch.living_room_crossfade
+                name: Living Room — crossfade
+              - entity: switch.dining_room_loudness
+                name: Dining Room — loudness
+              - entity: switch.dining_room_crossfade
+                name: Dining Room — crossfade
+              - entity: switch.foyer_loudness
+                name: Foyer — loudness
+              - entity: switch.foyer_crossfade
+                name: Foyer — crossfade
+              - entity: switch.gym_loudness
+                name: Gym — loudness
+              - entity: switch.gym_crossfade
+                name: Gym — crossfade
+              - entity: switch.mbr_speakers_loudness
+                name: MBR Speakers — loudness
+              - entity: switch.mbr_speakers_crossfade
+                name: MBR Speakers — crossfade
+
+  # ────────────────────────────────────────────────────────────────────
+  #  MUSIC  (Sonos rooms — play/pause/volume/source)
+  # ────────────────────────────────────────────────────────────────────
+  - path: music
+    title: Music
+    icon: mdi:music
+    type: sections
+    max_columns: 1
+    sections:
+      - type: grid
+        cards:
+          - type: custom:mushroom-title-card
+            title: Music
+            subtitle: 8 Sonos rooms — tap a card for full controls
+
+          - type: custom:mini-media-player
+            entity: media_player.kitchen
+            name: Kitchen
+            artwork: cover
+            hide:
+              power_state: false
+              icon: false
+              source: false
+
+          - type: custom:mini-media-player
+            entity: media_player.living_room
+            name: Living Room
+            artwork: cover
+            hide:
+              power_state: false
+
+          - type: custom:mini-media-player
+            entity: media_player.dining_room
+            name: Dining Room
+            artwork: cover
+
+          - type: custom:mini-media-player
+            entity: media_player.foyer
+            name: Foyer
+            artwork: cover
+
+          - type: custom:mini-media-player
+            entity: media_player.gym
+            name: Gym
+            artwork: cover
+
+          - type: custom:mini-media-player
+            entity: media_player.family_room_tv
+            name: Family Room
+            artwork: cover
+
+          - type: custom:mini-media-player
+            entity: media_player.master_bedrm_tv
+            name: Master Bedroom
+            artwork: cover
+
+          - type: custom:mini-media-player
+            entity: media_player.rec_room_tv
+            name: Rec Room
+            artwork: cover
+
+          - type: custom:mini-media-player
+            entity: media_player.mbr_speakers
+            name: MBR Speakers
+            artwork: cover
+
+          - type: markdown
+            content: >
+              💡 To group rooms (play the same thing everywhere): tap
+              a card → expand → "Group". HA's Sonos integration handles
+              the multi-room sync.
+
+  # ────────────────────────────────────────────────────────────────────
+  #  ENTERTAINMENT  (TVs + streaming devices)
+  # ────────────────────────────────────────────────────────────────────
+  - path: entertainment
+    title: Entertainment
+    icon: mdi:television
+    type: sections
+    max_columns: 1
+    sections:
+      - type: grid
+        cards:
+          - type: custom:mushroom-title-card
+            title: Entertainment
+
+          - type: custom:mushroom-title-card
+            subtitle: LG webOS TV
+          - type: custom:tv-card
+            entity: media_player.lg_webos_tv
+            name: LG webOS TV
+            tv: true
+
+          - type: custom:mushroom-title-card
+            subtitle: Samsung Frame TV (Dining Room)
+          - type: custom:tv-card
+            entity: media_player.dining_room_tv_tv_samsung_frame_65
+            name: Samsung Frame
+            tv: true
+
+          - type: custom:mushroom-title-card
+            subtitle: Apple TV — Guestroom
+          - type: custom:tv-card
+            entity: media_player.guestroom
+            name: Guestroom Apple TV
+            tv: true
+
+          - type: custom:mushroom-title-card
+            subtitle: NVIDIA Shield
+          - type: custom:tv-card
+            entity: media_player.shield
+            name: Shield
+            tv: true
+
+  # ────────────────────────────────────────────────────────────────────
+  #  SECURITY  (cameras, climate, sensors-when-paired)
+  # ────────────────────────────────────────────────────────────────────
+  - path: security
+    title: Security
+    icon: mdi:shield-home
+    type: sections
+    max_columns: 1
+    sections:
+      - type: grid
+        cards:
+          - type: custom:mushroom-title-card
+            title: Security
+
+          - type: conditional
+            conditions:
+              - entity: camera.front_door
+                state: unavailable
+            card:
+              type: markdown
+              content: >
+                ⚠️ **Nest is signed out.** Cameras and thermostats are
+                showing "unavailable" because Google's OAuth token
+                expired. Open Settings → Devices & Services → Nest →
+                **Reconfigure** to sign in again. Should take 30 seconds
+                and everything below will start working.
+
+          # Cameras
+          - type: custom:mushroom-title-card
+            subtitle: Cameras
+          - type: grid
+            columns: 2
+            square: true
+            cards:
+              - type: picture-glance
+                title: Front Door
+                camera_image: camera.front_door
+                entities: []
+              - type: picture-glance
+                title: Driveway
+                camera_image: camera.driveway
+                entities: []
+              - type: picture-glance
+                title: Backyard
+                camera_image: camera.backyard
+                entities: []
+              - type: picture-glance
+                title: Side Door
+                camera_image: camera.side_door
+                entities: []
+
+          # Climate (Nest thermostats)
+          - type: custom:mushroom-title-card
+            subtitle: Climate
+          - type: entities
+            entities:
+              - entity: climate.hallway
+                name: Hallway
+              - entity: climate.master_bedroom
+                name: Master Bedroom
+              - entity: climate.upstairs
+                name: Upstairs
+
+          # Door / lock placeholder
+          - type: custom:mushroom-title-card
+            subtitle: Doors & Locks
+          - type: markdown
+            content: >
+              No door, window, or lock sensors paired yet. When you add
+              Zigbee contact sensors or smart locks, they'll appear
+              here automatically.
