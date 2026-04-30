@@ -1,1 +1,112 @@
-{}
+# Scripts wired up to the dashboard's quick-action chips and used as
+# building blocks for automations. Each script is intentionally
+# defensive: it pauses media players that are playing rather than
+# blindly hitting them, and turns off lights only if they're on.
+
+scene_goodnight:
+  alias: Goodnight
+  description: >
+    Wind-down routine: pauses all Sonos rooms, turns off all lights,
+    and powers down TVs. Designed to be tapped at bedtime from any
+    phone.
+  mode: parallel
+  sequence:
+    - alias: Pause every Sonos / media player that's currently playing
+      service: media_player.media_pause
+      target:
+        entity_id:
+          - media_player.kitchen
+          - media_player.living_room
+          - media_player.dining_room
+          - media_player.foyer
+          - media_player.gym
+          - media_player.family_room_tv
+          - media_player.master_bedrm_tv
+          - media_player.rec_room_tv
+          - media_player.mbr_speakers
+      continue_on_error: true
+
+    - alias: Turn off TVs
+      service: media_player.turn_off
+      target:
+        entity_id:
+          - media_player.lg_webos_tv
+          - media_player.dining_room_tv_tv_samsung_frame_65
+          - media_player.guestroom
+          - media_player.shield
+      continue_on_error: true
+
+    - alias: Turn off all lights
+      service: light.turn_off
+      target:
+        entity_id: all
+      continue_on_error: true
+
+    - alias: Switch Adaptive Lighting to sleep mode (warm dim)
+      service: switch.turn_on
+      target:
+        entity_id: switch.adaptive_lighting_default_adaptive_lighting_sleep_mode_default
+      continue_on_error: true
+
+scene_all_off:
+  alias: All Off
+  description: >
+    Hard "everything off" — kills lights, all media playback (TVs +
+    speakers), and the surround switches on every Sonos TV. Use when
+    leaving the house.
+  mode: parallel
+  sequence:
+    - alias: Turn off all lights
+      service: light.turn_off
+      target:
+        entity_id: all
+      continue_on_error: true
+
+    - alias: Turn off every media player (TVs + Sonos rooms)
+      service: media_player.turn_off
+      target:
+        entity_id:
+          - media_player.lg_webos_tv
+          - media_player.dining_room_tv_tv_samsung_frame_65
+          - media_player.guestroom
+          - media_player.shield
+          - media_player.kitchen
+          - media_player.living_room
+          - media_player.dining_room
+          - media_player.foyer
+          - media_player.gym
+          - media_player.family_room_tv
+          - media_player.master_bedrm_tv
+          - media_player.rec_room_tv
+          - media_player.mbr_speakers
+      continue_on_error: true
+
+scene_movie:
+  alias: Movie
+  description: >
+    Movie mode for the Family Room: dims any controllable lights to
+    20%, turns on the LG TV, and primes the Family Room Sonos for
+    surround playback. Tweak the TV input by editing the call below
+    once you know which HDMI source your AV gear lives on.
+  mode: parallel
+  sequence:
+    - alias: Dim all lights to 20%
+      service: light.turn_on
+      target:
+        entity_id: all
+      data:
+        brightness_pct: 20
+        transition: 2
+      continue_on_error: true
+
+    - alias: Power on the LG TV
+      service: media_player.turn_on
+      target:
+        entity_id: media_player.lg_webos_tv
+      continue_on_error: true
+
+    - alias: Make sure Family Room TV surround is on
+      service: switch.turn_on
+      target:
+        entity_id: switch.family_room_tv_surround_enabled
+      continue_on_error: true
