@@ -20,10 +20,29 @@ HA_SSH_USER="${HA_SSH_USER:-root}"
 
 ha_ping
 
+# The official `wget -O - https://get.hacs.xyz | bash -` installer
+# auto-detects the Home Assistant config directory by looking for
+# /config/.HA_VERSION. The Git Pull add-on's first run tends to wipe
+# that file on a fresh setup (see project notes), so we guarantee
+# it exists before invoking the installer.
+echo "Looking up HA Core version to backfill /config/.HA_VERSION if missing..."
+ha_version="$(ha_api GET /api/config | python3 -c '
+import json, sys
+print(json.load(sys.stdin).get("version","") or "")
+')"
+if [[ -z "${ha_version}" ]]; then
+  echo "Could not read HA version from /api/config; aborting." >&2
+  exit 1
+fi
+
+ssh -o StrictHostKeyChecking=accept-new \
+    -p "${HA_SSH_PORT}" "${HA_SSH_USER}@${HA_SSH_HOST}" \
+    "[ -f /config/.HA_VERSION ] || (printf '%s' '${ha_version}' > /config/.HA_VERSION && echo '  Restored /config/.HA_VERSION = ${ha_version}')"
+
 echo "Running HACS installer over SSH on ${HA_SSH_USER}@${HA_SSH_HOST}:${HA_SSH_PORT}..."
 ssh -o StrictHostKeyChecking=accept-new \
     -p "${HA_SSH_PORT}" "${HA_SSH_USER}@${HA_SSH_HOST}" \
-    'wget -O - https://get.hacs.xyz | bash -'
+    'cd /config && wget -O - https://get.hacs.xyz | bash -'
 
 echo "Restarting Home Assistant Core to pick up the new custom_component..."
 ha_api POST /api/services/homeassistant/restart >/dev/null || true
