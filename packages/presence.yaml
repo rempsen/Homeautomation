@@ -1,5 +1,5 @@
 # Presence-based automations: arriving home, leaving home.
-# Tracks `person.dan_rosenblat`'s zone changes against `zone.home`.
+# Tracks `person.dan`'s zone changes against `zone.home`.
 #
 # Conservative defaults: actions are gated on time-of-day and only
 # touch a small set of entities so a flaky GPS update doesn't trigger
@@ -14,7 +14,7 @@ automation:
       gently bring up the lights to 60%. No-op during the day.
     triggers:
       - trigger: state
-        entity_id: person.dan_rosenblat
+        entity_id: person.dan
         from: not_home
         to: home
     conditions:
@@ -50,7 +50,7 @@ automation:
       nothing's left running.
     triggers:
       - trigger: state
-        entity_id: person.dan_rosenblat
+        entity_id: person.dan
         from: home
         to: not_home
         for:

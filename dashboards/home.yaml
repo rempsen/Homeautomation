@@ -31,7 +31,8 @@ views:
           - type: custom:mushroom-template-card
             primary: |-
               {% set h = now().hour %}
-              {% set name = state_attr('person.dan_rosenblat','friendly_name') | default('') | replace('Rosenblat','') | trim %}
+              {% set p = states.person | first %}
+              {% set name = (p.attributes.friendly_name if p else '') | regex_replace(' .*$','') | trim %}
               {% if h < 5 %}Late evening{% if name %}, {{ name }}{% endif %}
               {% elif h < 12 %}Good morning{% if name %}, {{ name }}{% endif %}
               {% elif h < 18 %}Good afternoon{% if name %}, {{ name }}{% endif %}
@@ -40,7 +41,8 @@ views:
             secondary: |-
               {% set w = states('weather.forecast_home') %}
               {% set t = state_attr('weather.forecast_home','temperature') %}
-              {% set home = is_state('person.dan_rosenblat','home') %}
+              {% set p = states.person | first %}
+              {% set home = (p.state == 'home') if p else false %}
               {{ w | default('Home') | replace('_',' ') | title }}{% if t %} · {{ t }}°{% endif %}{% if home %} · You're home{% else %} · Away{% endif %}
             icon: |-
               {% set w = states('weather.forecast_home') %}
