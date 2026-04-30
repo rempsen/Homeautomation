@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Install and configure the "Home Assistant Git Pull" add-on so the Green
-# pulls this repo (with submodules) into /config on demand.
+# pulls this repo into /config on demand.
 #
 # Inputs (env):
 #   HA_HOST, HA_TOKEN  see ha-api.sh
@@ -10,8 +10,11 @@
 #                      (only needed for private repos)
 #
 # Notes:
-#   - Add-on slug for the official community Git Pull add-on is "core_git_pull".
-#   - We enable recurse-submodules so third_party/ submodules ride along.
+#   - Add-on slug: core_git_pull. Tested against v9.0.1.
+#   - The official Git Pull add-on does NOT honor custom git args, so it
+#     does not recurse into submodules. If you rely on submodules, run
+#     `git submodule update --init --recursive` over SSH after each pull,
+#     or vendor the upstream code directly.
 
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -33,46 +36,64 @@ fi
 
 ha_ping
 
-state="$(ha_api GET "/api/hassio/addons/${ADDON_SLUG}/info" 2>/dev/null \
-  | python3 -c 'import json,sys; print(json.load(sys.stdin).get("data",{}).get("state","not_installed"))' \
-  || echo not_installed)"
+addon_version() {
+  ha_supervisor get "/addons/${ADDON_SLUG}/info" \
+    | python3 -c 'import json, sys; print(json.loads(sys.stdin.read() or "{}").get("version") or "")'
+}
 
-if [[ "${state}" == "not_installed" ]]; then
-  echo "Installing add-on ${ADDON_SLUG}..."
-  ha_api POST "/api/hassio/addons/${ADDON_SLUG}/install" >/dev/null
+ver="$(addon_version)"
+if [[ -z "$ver" ]]; then
+  echo "Installing add-on ${ADDON_SLUG} (this can take 30-90s)..."
+  ha_supervisor post "/store/addons/${ADDON_SLUG}/install" '{}' >/dev/null
+  for _ in $(seq 1 60); do
+    sleep 3
+    ver="$(addon_version)"
+    [[ -n "$ver" ]] && break
+  done
+  if [[ -z "$ver" ]]; then
+    echo "Add-on did not finish installing within timeout." >&2
+    exit 1
+  fi
 fi
+echo "Add-on installed (version ${ver})."
 
 echo "Writing Git Pull options (repo=${GIT_REPO}, branch=${GIT_BRANCH})..."
-options_json=$(python3 - "$GIT_REPO" "$GIT_BRANCH" "$deploy_key_content" <<'PY'
+# Schema as of core_git_pull v9.0.1:
+#   repository, git_branch, git_remote, auto_restart, restart_ignore[],
+#   git_command (pull|reset), git_prune, deployment_key[], deployment_user,
+#   deployment_password, deployment_key_protocol, repeat{active,interval}
+options_json="$(python3 - "$GIT_REPO" "$GIT_BRANCH" "$deploy_key_content" <<'PY'
 import json, sys
 repo, branch, deploy_key = sys.argv[1], sys.argv[2], sys.argv[3]
 opts = {
     "repository": repo,
-    "auto_update": False,
-    "repeat": {"active": False, "interval": 60},
     "git_branch": branch,
-    "git_command": "pull",
     "git_remote": "origin",
+    "auto_restart": False,
+    "restart_ignore": ["ui-lovelace.yaml", ".gitignore"],
+    "git_command": "pull",
     "git_prune": True,
-    "restart_ignored_files": [],
-    # The community Git Pull add-on supports submodules transparently when
-    # using its default `pull` command; we add an explicit recurse arg as
-    # an extra git argument.
-    "git_extra_args": ["--recurse-submodules"],
+    "deployment_key": [deploy_key] if deploy_key.strip() else [],
+    "deployment_user": "",
+    "deployment_password": "",
+    "deployment_key_protocol": "rsa",
+    "repeat": {"active": False, "interval": 300},
 }
-if deploy_key.strip():
-    opts["deployment_key"] = deploy_key
 print(json.dumps({"options": opts}))
 PY
-)
-ha_api POST "/api/hassio/addons/${ADDON_SLUG}/options" "${options_json}" >/dev/null
+)"
+ha_supervisor post "/addons/${ADDON_SLUG}/options" "$options_json" >/dev/null
 
 echo "Starting add-on (this performs the first pull)..."
-ha_api POST "/api/hassio/addons/${ADDON_SLUG}/start" >/dev/null || true
+ha_supervisor post "/addons/${ADDON_SLUG}/start" '{}' >/dev/null
 
 echo "Validating /config after first sync..."
-ha_api POST "/api/services/homeassistant/check_config" >/dev/null
+ha_api POST /api/services/homeassistant/check_config >/dev/null
 
-echo "Done. To trigger a manual pull later:"
-echo "  curl -fsSL -X POST -H \"Authorization: Bearer \$HA_TOKEN\" \\"
-echo "       \"http://\$HA_HOST/api/hassio/addons/${ADDON_SLUG}/start\""
+cat <<EOM
+Done.
+
+Trigger a manual pull later from the workstation (over SSH, since the
+Supervisor HTTP proxy is locked down for long-lived tokens):
+  ssh root@${HA_HOST%%:*} -p 22222 'ha addons start ${ADDON_SLUG}'
+EOM

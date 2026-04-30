@@ -65,11 +65,17 @@ After step 2, this repo is `/config` on the Green. Workflow becomes:
 
 ```
 edit YAML  ->  git commit && git push
-           ->  curl -X POST -H "Authorization: Bearer $HA_TOKEN" \
-                    http://$HA_HOST/api/hassio/addons/core_git_pull/start
+           ->  ssh root@${HA_HOST%%:*} -p 22222 'ha addons start core_git_pull'
            ->  curl -X POST -H "Authorization: Bearer $HA_TOKEN" \
                     http://$HA_HOST/api/services/automation/reload
 ```
+
+> **Why SSH for the pull trigger?** The Supervisor HTTP proxy at
+> `/api/hassio/...` rejects long-lived access tokens with HTTP 401 in HA
+> 2024.x and newer (admin role on the user is no longer enough). SSH or
+> the WebSocket Supervisor API are the working alternatives — see
+> `scripts/ha-api.sh::ha_supervisor` for the WS path used by the bootstrap
+> scripts.
 
 ## Pairing Zigbee devices from the CLI
 
@@ -154,7 +160,6 @@ ssh root@${HA_HOST%%:*} -p 22222 'ha core check'
 curl -fsSL -H "Authorization: Bearer $HA_TOKEN" \
   "http://$HA_HOST/api/error_log"
 
-# Inspect an add-on's logs:
-curl -fsSL -H "Authorization: Bearer $HA_TOKEN" \
-  "http://$HA_HOST/api/hassio/addons/core_git_pull/logs"
+# Inspect an add-on's logs (HTTP proxy 401s for long-lived tokens, so SSH):
+ssh root@${HA_HOST%%:*} -p 22222 'ha addons logs core_git_pull | tail -50'
 ```
