@@ -511,17 +511,40 @@ views:
                 camera_image: camera.side_door
                 entities: []
 
-          # Climate (Nest thermostats)
+          # Climate (Nest thermostats) — inline target-temp +/- and mode
+          # buttons. Controls collapse when the thermostat is off.
           - type: custom:mushroom-title-card
             subtitle: Climate
-          - type: entities
-            entities:
-              - entity: climate.hallway
-                name: Hallway
-              - entity: climate.master_bedroom
-                name: Master Bedroom
-              - entity: climate.upstairs
-                name: Upstairs
+          - type: custom:mushroom-climate-card
+            entity: climate.hallway
+            name: Hallway
+            show_temperature_control: true
+            collapsible_controls: true
+            hvac_modes:
+              - heat
+              - cool
+              - heat_cool
+              - "off"
+          - type: custom:mushroom-climate-card
+            entity: climate.master_bedroom
+            name: Master Bedroom
+            show_temperature_control: true
+            collapsible_controls: true
+            hvac_modes:
+              - heat
+              - cool
+              - heat_cool
+              - "off"
+          - type: custom:mushroom-climate-card
+            entity: climate.upstairs
+            name: Upstairs
+            show_temperature_control: true
+            collapsible_controls: true
+            hvac_modes:
+              - heat
+              - cool
+              - heat_cool
+              - "off"
 
           # Door / lock placeholder
           - type: custom:mushroom-title-card
